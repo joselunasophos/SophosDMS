@@ -1,0 +1,156 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Template used to implement the necessary resources for the implementation of DMS parameterization through an excel document
+Parameters:
+  pTemplate:
+    Description: Type of DB Engine
+    Type: String
+    Default: mysql
+
+Resources:
+  DmsExcelRoleTest:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: Dmsexcelpolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+                - s3:*
+                - s3-object-lambda:*
+
+  LambdaExcelLeyer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      Content:
+        S3Bucket: !Sub bucket-dms-excel-${AWS::AccountId}
+        S3Key: python.zip
+      CompatibleRuntimes:
+        - python3.8
+        - python3.9
+      Description: My Lambda Layer
+
+
+  LambdaGetParams:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub get-params-data-${AWS::AccountId}
+      Role: 
+        Fn::GetAtt: [DmsExcelRoleTest, Arn]
+      Runtime: python3.9
+      Handler: index.lambda_handler
+      Layers:
+        - !Ref LambdaExcelLeyer
+      Timeout: 300
+      Environment:
+        Variables:
+          Bucket: !Sub bucket-dms-excel-${AWS::AccountId}
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+          import openpyxl
+          import tempfile
+          import os
+          from io import BytesIO
+
+          def dms_file():#this file is the principal file of Dms
+              file_name = 'cf_file_in/DmsParams.xlsx'
+              bucket_name = os.environ['Bucket']
+
+              s3 = boto3.client('s3')
+              try:
+                  response = s3.get_object(Bucket=bucket_name, Key=file_name)
+                  excel_data = response['Body'].read()
+
+                  excel_stream = BytesIO(excel_data)
+
+                  workbook = openpyxl.load_workbook(excel_stream)
+
+                  sheets = workbook.sheetnames
+                  i = 0
+                  j = 0
+                  param = []
+                  for sheet_name in sheets:
+                      if j == 0:
+                          sheet = workbook['Data']
+                          for row in sheet.iter_rows(values_only=True):
+                              print(row)
+                              dict = {}
+                              if i > 0:
+                                   if row[0] is not None:
+                                      dict["ParameterKey"] = str(row[0])
+                                      dict["ParameterValue"] = str(row[1])
+                                      param.append(dict)
+                              i = i + 1 
+                          j = j + 1
+
+
+                  print(param)
+                  workbook.close()
+
+                  json_data = json.dumps(param)
+
+                  file_name_json = 'cf_file_out/params.json'
+                  s3.put_object(Body=json_data, Bucket=bucket_name, Key=file_name_json)
+              except:
+                  return "file no found"
+
+          def dms_task_file():#this file is the principal file of Dms
+              file_name = 'cf_file_in/DmsTaskParams.xlsx'
+              bucket_name = os.environ['Bucket']
+
+              s3 = boto3.client('s3')
+              try:
+                  response = s3.get_object(Bucket=bucket_name, Key=file_name)
+                  excel_data = response['Body'].read()
+
+                  excel_stream = BytesIO(excel_data)
+
+                  workbook = openpyxl.load_workbook(excel_stream)
+
+                  sheets = workbook.sheetnames
+                  i = 0
+                  j = 0
+                  param = []
+                  for sheet_name in sheets:
+                      if j == 0:
+                          sheet = workbook['Data']
+                          for row in sheet.iter_rows(values_only=True):
+                              print(row)
+                              dict = {}
+                              if i > 0:
+                                  if row[0] is not None:
+                                      dict["ParameterKey"] = str(row[0])
+                                      dict["ParameterValue"] = str(row[1])
+                                      param.append(dict)
+                              i = i + 1 
+                          j = j + 1
+
+
+                  print(param)
+                  workbook.close()
+
+                  json_data = json.dumps(param)
+
+                  file_name_json = 'cf_file_out/taskparams.json'
+                  s3.put_object(Body=json_data, Bucket=bucket_name, Key=file_name_json)
+              except:
+                  return "file no found"
+
+          def lambda_handler(event, context):
+
+              dms_file()
+              dms_task_file()

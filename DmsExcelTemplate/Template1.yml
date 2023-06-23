@@ -1,0 +1,85 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Template used to implement the first necessary resources for the implementation of DMS parameterization through an excel document
+
+Parameters:
+  pTemplate:
+    Description: Default Param
+    Type: String
+    Default: Default
+
+Resources:
+  ExecParamsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: DmsExcelpolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+
+  LambdaExcGetParams:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub exec-params-data-${AWS::AccountId}
+      Role: 
+        Fn::GetAtt: [ExecParamsRole, Arn]
+      Runtime: python3.9
+      Handler: index.lambda_handler
+      Timeout: 300
+      Environment:
+        Variables:
+          ID: !Sub ${AWS::AccountId}
+      Code:
+        ZipFile: |
+          import boto3
+          import os
+
+          def lambda_handler(event, context):
+              client = boto3.client('lambda')
+
+              lambda_name = 'get-params-data-'+os.environ['ID']
+              payload = '{"key": "value"}' 
+              response = client.invoke(
+                            FunctionName=lambda_name,
+                            InvocationType='Event', 
+                            Payload=payload
+                        )
+
+              return {
+                  'statusCode': 200,
+                  'body': 'Función principal ejecutada exitosamente'
+              }
+  LambdaExcelPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Fn::GetAtt: [LambdaExcGetParams, Arn]
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+
+  DMSS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub bucket-dms-excel-${AWS::AccountId}
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:*
+            Function:
+              Fn::GetAtt: [LambdaExcGetParams, Arn]
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: cf_file_in/

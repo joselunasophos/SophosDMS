@@ -1,0 +1,901 @@
+
+AWSTemplateFormatVersion: 2010-09-09
+Description: Template used to implement the necessary resources for the implementation of DMS parameterization through an excel document
+Parameters:
+  pDBSourceEngine:
+    Description: Type of DB Engine
+    Type: String
+    Default: mysql
+    AllowedValues:
+      - mysql
+      - oracle
+      - postgres
+      - mariadb
+      - aurora
+      - aurora-postgresql
+      - db2
+      - sybase
+      - sqlserver
+  pDBSourcePort:
+    Description: Port of DBEngine
+    Type: Number
+    Default: 5432
+  pDBSourceName:
+    Description: DB to extract
+    Type: String
+    Default: mysql
+  pDBSourceSecretFolder:
+    Description: folder where the secrets of DB
+    Type: String
+    AllowedPattern: "[a-z0-9A-Z]{2,10}"
+  pDMSSchemaFilter:
+    Description: Schema to Stract Data
+    Type: String
+    AllowedPattern: ^[a-zA-Z0-9-_%]*$
+    Default: "%"
+  pDMSTableFilter:
+    Description: tables to Stract Data
+    Type: String
+    Default: "%"
+    AllowedPattern: ^[a-zA-Z0-9-_%]*$
+
+
+
+Conditions:
+  IsDatabase:
+    Fn::Or:
+      - Fn::Equals:
+          - Ref: pDBSourceEngine
+          - db2
+      - Fn::Equals:
+          - Ref: pDBSourceEngine
+          - azuredb
+      - Fn::Equals:
+          - Ref: pDBSourceEngine
+          - sqlserver
+      - Fn::Equals:
+          - Ref: pDBSourceEngine
+          - oracle
+      - Fn::Equals:
+          - Ref: pDBSourceEngine
+          - postgres
+      - Fn::Equals:
+          - Ref: pDBSourceEngine
+          - sybase
+
+Resources:
+  DmsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: !Sub dms.${AWS::Region}.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: DmsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - cloudformation:*
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - elasticloadbalancing:*
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - ec2:*
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - cloudwatch:*
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - iam:CreateServiceLinkedRole
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - application-autoscaling:*
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - sns:*
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - rds:*
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - logs:DescribeLogStreams
+                - logs:GetLogEvents
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - outposts:GetOutpostInstanceTypes
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - devops-guru:GetResourceCollection
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - s3:*
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - s3-object-lambda:*
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - dms:*
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - kms:Decrypt
+                - kms:Encrypt
+                - kms:GenerateDataKey
+  
+  lambdaExcRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: DmslambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:PutLogEvents
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - states:*
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - s3:*
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - lambda:*
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - dynamodb:*
+
+  MachineStepExcRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: DmsMachinePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - iam:PassRole
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - elasticmapreduce:TerminateJobFlows
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - lambda:*
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - xray:PutTraceSegments
+                - xray:PutTelemetryRecords
+                - xray:GetSamplingRules
+                - xray:GetSamplingTargets
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - cloudwatch:*
+                - cloudformation:CreateStack
+                - cloudformation:DescribeStackEvents
+                - ec2:AuthorizeSecurityGroupIngress
+                - ec2:AuthorizeSecurityGroupEgress
+                - ec2:CancelSpotInstanceRequests
+                - ec2:CreateRoute
+                - ec2:CreateSecurityGroup
+                - ec2:CreateTags
+                - ec2:DeleteRoute
+                - ec2:DeleteTags
+                - ec2:DeleteSecurityGroup
+                - ec2:DescribeAvailabilityZones
+                - ec2:DescribeAccountAttributes
+                - ec2:DescribeInstances
+                - ec2:DescribeKeyPairs
+                - ec2:DescribeRouteTables
+                - ec2:DescribeSecurityGroups
+                - ec2:DescribeSpotInstanceRequests
+                - ec2:DescribeSpotPriceHistory
+                - ec2:DescribeSubnets
+                - ec2:DescribeVpcAttribute
+                - ec2:DescribeVpcs
+                - ec2:DescribeRouteTables
+                - ec2:DescribeNetworkAcls
+                - ec2:CreateVpcEndpoint
+                - ec2:ModifyImageAttribute
+                - ec2:ModifyInstanceAttribute
+                - ec2:RequestSpotInstances
+                - ec2:RevokeSecurityGroupEgress
+                - ec2:RunInstances
+                - ec2:TerminateInstances
+                - elasticmapreduce:*
+                - iam:GetPolicy
+                - iam:GetPolicyVersion
+                - iam:ListRoles
+                - iam:PassRole
+                - kms:List*
+                - s3:*
+                - sdb:*
+            - Resource: "*"
+              Effect: Allow
+              Action:
+                - ec2:AuthorizeSecurityGroupEgress  
+                - ec2:AuthorizeSecurityGroupIngress  
+                - ec2:CancelSpotInstanceRequests  
+                - ec2:CreateFleet  
+                - ec2:CreateLaunchTemplate  
+                - ec2:CreateNetworkInterface  
+                - ec2:CreateSecurityGroup  
+                - ec2:CreateTags  
+                - ec2:DeleteLaunchTemplate  
+                - ec2:DeleteNetworkInterface  
+                - ec2:DeleteSecurityGroup  
+                - ec2:DeleteTags  
+                - ec2:DescribeAvailabilityZones  
+                - ec2:DescribeAccountAttributes  
+                - ec2:DescribeDhcpOptions  
+                - ec2:DescribeImages  
+                - ec2:DescribeInstanceStatus  
+                - ec2:DescribeInstances  
+                - ec2:DescribeKeyPairs  
+                - ec2:DescribeLaunchTemplates  
+                - ec2:DescribeNetworkAcls  
+                - ec2:DescribeNetworkInterfaces  
+                - ec2:DescribePrefixLists  
+                - ec2:DescribeRouteTables  
+                - ec2:DescribeSecurityGroups  
+                - ec2:DescribeSpotInstanceRequests  
+                - ec2:DescribeSpotPriceHistory  
+                - ec2:DescribeSubnets  
+                - ec2:DescribeTags  
+                - ec2:DescribeVpcAttribute  
+                - ec2:DescribeVpcEndpoints  
+                - ec2:DescribeVpcEndpointServices  
+                - ec2:DescribeVpcs  
+                - ec2:DetachNetworkInterface  
+                - ec2:ModifyImageAttribute  
+                - ec2:ModifyInstanceAttribute  
+                - ec2:RequestSpotInstances  
+                - ec2:RevokeSecurityGroupEgress  
+                - ec2:RunInstances  
+                - ec2:TerminateInstances  
+                - ec2:DeleteVolume  
+                - ec2:DescribeVolumeStatus  
+                - ec2:DescribeVolumes  
+                - ec2:DetachVolume  
+                - iam:GetRole  
+                - iam:GetRolePolicy  
+                - iam:ListInstanceProfiles  
+                - iam:ListRolePolicies  
+                - iam:PassRole  
+                - s3:CreateBucket  
+                - s3:Get*  
+                - s3:List*  
+                - sdb:BatchPutAttributes  
+                - sdb:Select  
+                - sqs:CreateQueue  
+                - sqs:Delete*  
+                - sqs:GetQueue*  
+                - sqs:PurgeQueue  
+                - sqs:ReceiveMessage  
+                - cloudwatch:PutMetricAlarm  
+                - cloudwatch:DescribeAlarms  
+                - cloudwatch:DeleteAlarms  
+                - application-autoscaling:RegisterScalableTarget  
+                - application-autoscaling:DeregisterScalableTarget  
+                - application-autoscaling:PutScalingPolicy  
+                - application-autoscaling:DeleteScalingPolicy  
+                - application-autoscaling:Describe* 
+  
+  ### End Roles IAM ###
+
+  ### Create EMR Files ###
+  MainEmrFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub my-main-${pDBSourceSecretFolder}
+      Role: 
+        Fn::GetAtt: [lambdaExcRole, Arn]
+      Runtime: python3.9
+      Handler: index.lambda_handler
+      Timeout: 300
+      Environment:
+        Variables:
+          Bucket: !Sub bucket-dms--${AWS::AccountId}-${pDBSourceEngine}
+      Code:
+        ZipFile: |
+          import boto3
+          import os
+
+          def lambda_handler(event, context):
+              # Tu lógica de Python aquí
+              s3 = boto3.client('s3')
+              bucket_name = os.environ['Bucket']
+              file_key = 'Emr_cluster/Python/main.py'
+              Body_txt = 'from pyspark.sql import SparkSession \n'\
+                  'from pyspark import SparkConf \n'\
+                  'from pyspark.sql.functions import lit, col, regexp_replace \n'\
+                  'import argparse \n'\
+                  'import boto3 \n\n'\
+                  'conf = SparkConf() \n\n'\
+                  'spark = SparkSession.builder \\'+'\n'\
+                      '\t.config(conf=conf) \\'+'\n'\
+                      '\t.appName("test") \\'+'\n'\
+                      '\t.getOrCreate()'+'\n'\
+                  "if __name__ == '__main__': \n\n"\
+                      "\tdynamodb_client = boto3.client('dynamodb')\n"\
+                      '\tparser = argparse.ArgumentParser() \n'\
+                      '\tparser.add_argument("--files", help="files", required=True) \n'\
+                      '\tparser.add_argument("--path_in", help="path_in", required=True) \n'\
+                      '\tparser.add_argument("--path_out", help="path_out", required=True) \n\n'\
+                      '\tparser.add_argument("--DynamoTb", help="path_out", required=True) \n\n'\
+                      '\targs = parser.parse_args() \n\n'\
+                      '\tfiles = args.files \n'\
+                      '\tpath_in = args.path_in \n'\
+                      '\tpath_out = args.path_out \n'\
+                      '\tDynamotable = args.DynamoTb \n'\
+                      "\tpath_in = path_in.split('|') \n"\
+                      "\tpath_out = path_out.split('|') \n\n"\
+                      "\ts3 = boto3.client('s3') \n"\
+                      "\tfiles = files.split(',') \n\n"\
+                      '\tprint(files) \n'\
+                      '\tprint(path_in) \n'\
+                      '\tprint(path_out) \n\n'\
+                      '\tfor f in files: \n'\
+                          '\t\tprint(f) \n'\
+                          "\t\tfile = f.split('|') \n"\
+                          '\t\tprint(file) \n'\
+                          "\t\tKey = '{}{}/{}/{}'.format(path_in[1],file[3],file[2],file[0]) \n"\
+                          "\t\tcopy_source = {'Bucket': path_in[0], 'Key': Key} \n"\
+                          "\t\ts3.copy_object(Bucket=path_out[0], Key=path_out[1]+file[2]+'.csv', CopySource=copy_source)\n"\
+                          "\t\tdynamodb_client.put_item(\n"\
+                          "\t\t\tTableName= Dynamotable,\n"\
+                          "\t\t\tItem={\n"\
+                          "\t\t\t\t'file_name': {'S': file[2]+'.csv'},\n"\
+                          "\t\t\t\t'update_date': {'S': file[1]}\n"\
+                          "\t\t\t}\n"\
+                          "\t\t)"
+              s3.put_object(Body=Body_txt,Bucket=bucket_name,Key=file_key)
+
+  BootstrapFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub my-bt-${pDBSourceSecretFolder}
+      Role: 
+        Fn::GetAtt: [lambdaExcRole, Arn]
+      Runtime: python3.9
+      Handler: index.lambda_handler
+      Timeout: 300
+      Environment:
+        Variables:
+          Bucket: !Sub bucket-dms--${AWS::AccountId}-${pDBSourceEngine}
+      Code:
+        ZipFile: |
+          import boto3
+          import os
+
+          def lambda_handler(event, context):
+              # Tu lógica de Python aquí
+              s3 = boto3.client('s3')
+              bucket_name = os.environ['Bucket']
+              file_key = 'Emr_cluster/Bootstrap/bootstrap.sh'
+              Body_txt = '#!/usr/bin/env bash \n\n'\
+                '#python \n'\
+                'sudo pip3 install pandas==1.1.5 \n'\
+                'sudo pip3 install Jinja2==3.1.2 \n'\
+                'sudo pip3 install paramiko==2.7.1 \n'\
+                'sudo pip3 install boto3 \n'
+
+              s3.put_object(Body=Body_txt,Bucket=bucket_name,Key=file_key)
+
+  ### END EMR Files ###
+
+  DMSStepMachine:
+    Type: "AWS::StepFunctions::StateMachine"
+    Properties:
+      DefinitionString:
+        Fn::Sub: |
+          {
+            "Comment": "A description of my state machine",
+            "StartAt": "lambda-init",
+            "States": {
+              "lambda-init": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "Parameters": {
+                  "Payload.$": "$",
+                  "FunctionName": "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${pDBSourceSecretFolder}-dms-get-items:$LATEST"
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.AWSLambdaException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 6,
+                    "BackoffRate": 2
+                  }
+                ],
+                "Next": "DataIsEmpty"
+              },
+              "DataIsEmpty": {
+                "Type": "Choice",
+                "Choices": [
+                  {
+                    "Variable": "$.Payload.Data",
+                    "BooleanEquals": false,
+                    "Next": "Pass"
+                  }
+                ],
+                "Default": "EMR CreateCluster"
+              },
+              "Pass": {
+                "Type": "Pass",
+                "End": true
+              },
+              "EMR CreateCluster": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::elasticmapreduce:createCluster.sync",
+                "Parameters": {
+                  "Name": "DmstoSdlfCluster",
+                  "Configurations": [
+                    {
+                      "Classification": "spark",
+                      "Properties": {
+                        "maximizeResourceAllocation": "true"
+                      }
+                    },
+                    {
+                      "Classification": "hive-site",
+                      "Properties": {
+                        "hive.metastore.client.factory.class": "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory"
+                      }
+                    },
+                    {
+                      "Classification": "spark-hive-site",
+                      "Properties": {
+                        "hive.metastore.client.factory.class": "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory"
+                      }
+                    }
+                  ],
+                  "ServiceRole": "DmstoSdlf_role",
+                  "JobFlowRole": "DmstoSdlf_DefaultRole",
+                  "ReleaseLabel": "emr-6.3.1",
+                  "Applications": [
+                    {
+                      "Name": "Spark"
+                    }
+                  ],
+                  "LogUri": "s3://bucket-dms--${AWS::AccountId}-${pDBSourceEngine}/Emr_cluster/Logs/",
+                  "BootstrapActions": [
+                    {
+                      "Name": "CustomBootStrapAction",
+                      "ScriptBootstrapAction": {
+                        "Path": "s3://bucket-dms--${AWS::AccountId}-${pDBSourceEngine}/Emr_cluster/Bootstrap/bootstrap.sh"
+                      }
+                    }
+                  ],
+                  "VisibleToAllUsers": true,
+                  "Instances": {
+                    "KeepJobFlowAliveWhenNoSteps": true,
+                    "InstanceFleets": [
+                      {
+                        "InstanceFleetType": "MASTER",
+                        "Name": "Master",
+                        "TargetOnDemandCapacity": 1,
+                        "InstanceTypeConfigs": [
+                          {
+                            "InstanceType.$": "$.Payload.Instance"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "ResultPath": "$.cluster",
+                "Next": "EMR SparkJob"
+              },
+              "EMR SparkJob": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::elasticmapreduce:addStep.sync",
+                "Parameters": {
+                  "ClusterId.$": "$.cluster.ClusterId",
+                  "Step": {
+                    "Name": "Spark_Job",
+                    "HadoopJarStep": {
+                      "Jar": "command-runner.jar",
+                      "Args.$": "$.Payload.step"
+                    }
+                  }
+                },
+                "ResultPath": null,
+                "Next": "EMR TerminateCluster"
+              },
+              "EMR TerminateCluster": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::elasticmapreduce:terminateCluster",
+                "Parameters": {
+                  "ClusterId.$": "$.cluster.ClusterId"
+                },
+                "End": true
+              }
+            }
+          }
+      RoleArn: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${MachineStepExcRole}
+
+  lambdaFunctionExcStepF:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${pDBSourceSecretFolder}-dms-exc-stepf
+      Description: Initiates the step function to transform data
+      Timeout: 600
+      Environment:
+        Variables:
+          StepFunction: !Ref DMSStepMachine
+          Bucket: !Sub bucket-dms--${AWS::AccountId}-${pDBSourceEngine}
+          lPrefix: !Ref pDBSourceSecretFolder
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import os
+          import time
+
+          def check_file():
+              s3 = boto3.client('s3')
+              Bucket = os.environ['Bucket']
+              key = 'Emr_cluster/Python/main.py'
+              try:
+                  response = s3.head_object(Bucket=bucket_name, Key=key)
+                  return True
+              except:
+                  return False
+
+          def invoke_lambda_main():
+              client = boto3.client('lambda')
+              Prefix = os.environ['lPrefix']
+              lambda_name = 'my-main-'+Prefix
+              payload = '{"key": "value"}' 
+              response = client.invoke(
+                  FunctionName=lambda_name,
+                  InvocationType='Event',  # Opciones: 'Event', 'RequestResponse', 'DryRun'
+                  Payload=payload
+              )
+              
+              
+          def invoke_lambda_bootstrap():
+              client = boto3.client('lambda')
+              Prefix = os.environ['lPrefix']
+              lambda_name = 'my-bt-'+Prefix
+              payload = '{"key": "value"}' 
+              response = client.invoke(
+                  FunctionName=lambda_name,
+                  InvocationType='Event',  # Opciones: 'Event', 'RequestResponse', 'DryRun'
+                  Payload=payload
+              )
+              
+              
+          def lambda_handler(event, context):
+              # TODO implement
+              stepfunctions_client = boto3.client('stepfunctions')
+              state_machine_arn = os.environ['StepFunction']
+              
+              #state_machine_arn = 'arn:aws:states:us-east-1:118712814110:stateMachine:StateMachine-Test'
+              input_data = {
+                  'key1': 'value1',
+                  'key2': 'value2'
+              }
+              Confirm = check_file()
+              if Confirm == False:
+                  invoke_lambda_main()
+                  time.sleep(30)
+                  invoke_lambda_bootstrap()
+                  time.sleep(30)
+                  
+                  response = stepfunctions_client.start_execution(
+                      stateMachineArn=state_machine_arn,
+                      input=json.dumps(input_data)
+                  )
+                  
+              else:
+                  response = stepfunctions_client.start_execution(
+                      stateMachineArn=state_machine_arn,
+                      input=json.dumps(input_data)
+                  )
+              
+              execution_arn = response['executionArn']
+              
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps('Hello from Lambda!'),
+                  'status' : execution_arn
+              }
+
+      Handler: index.lambda_handler
+      Role: 
+        Fn::GetAtt: [lambdaExcRole, Arn]
+      Runtime: python3.9
+
+  #MyLambdaPermission:
+    #Type: AWS::Lambda::Permission
+    #DependsOn: lambdaFunctionExcStepF
+    #Properties:
+      #FunctionName: !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${pDBSourceSecretFolder}-dms-exc-stepf
+      #Action: lambda:InvokeFunction
+      #Principal: s3.amazonaws.com
+      #SourceAccount: !Ref AWS::AccountId
+
+  DMSS3Bucket:
+    Type: AWS::S3::Bucket
+    #DependsOn: MyLambdaPermission
+    Properties:
+      BucketName: !Sub bucket-dms--${AWS::AccountId}-${pDBSourceEngine}
+      #NotificationConfiguration:
+        #LambdaConfigurations:
+          #- Event: s3:ObjectCreated:*
+            #Function: !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${pDBSourceSecretFolder}-dms-exc-stepf
+            #Filter:
+              #S3Key:
+                #Rules:
+                  #- Name: prefix
+                    #Value: IN/
+  MyDynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub Controll-table-${pDBSourceSecretFolder}
+      AttributeDefinitions:
+        - 
+          AttributeName: file_name
+          AttributeType: S
+      KeySchema:
+        - 
+          AttributeName: file_name
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+  DMSSource:
+    Type: 'AWS::DMS::Endpoint'
+    Properties: 
+        DatabaseName: 
+          Fn::If:
+            - IsDatabase
+            - Ref: pDBSourceName
+            - Ref: AWS::NoValue
+        EndpointType: source
+        EngineName:
+            Ref: pDBSourceEngine
+        ServerName: !Sub "{{resolve:secretsmanager:/SDLF/RDS/${pDBSourceSecretFolder}:SecretString:server}}"
+        Port:
+            Ref: pDBSourcePort
+        Username: !Sub "{{resolve:secretsmanager:/SDLF/RDS/${pDBSourceSecretFolder}:SecretString:username}}"
+        Password: !Sub "{{resolve:secretsmanager:/SDLF/RDS/${pDBSourceSecretFolder}:SecretString:password}}"
+
+  DMSTarget:
+    Type: AWS::DMS::Endpoint
+    Properties:
+      EndpointType: target
+      EngineName: s3
+      ExtraConnectionAttributes: "dataFormat=csv;AddColumnName=true"
+      S3Settings:
+        BucketFolder: "IN/"
+        BucketName: !Ref DMSS3Bucket
+        ServiceAccessRoleArn: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${DmsRole}
+
+  DmsReplicationInstance: 
+    Type: "AWS::DMS::ReplicationInstance"
+    Properties: 
+      ReplicationInstanceClass: dms.t3.micro
+      AllocatedStorage: 50
+      EngineVersion: "3.4.7"
+
+  DMSReplicationTask:
+    Type: AWS::DMS::ReplicationTask
+    Properties:
+      MigrationType: full-load
+      ReplicationInstanceArn: !Sub ${DmsReplicationInstance} 
+      SourceEndpointArn: !Sub ${DMSSource} 
+      TableMappings:
+        Fn::Sub:
+          - '{"rules": [{"rule-type": "selection", "rule-id": "1", "rule-action": "include", "object-locator": {"schema-name": "${schema}", "table-name": "${tables}"}, "rule-name": "1"}]}'
+          - { schema: !Ref pDMSSchemaFilter, tables: !Ref pDMSTableFilter }
+      TargetEndpointArn: !Sub ${DMSTarget}  
+
+  lambdaFunctionGetItems:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${pDBSourceSecretFolder}-dms-get-items
+      Description: Initiates the step function to transform data
+      Timeout: 600
+      Environment:
+        Variables:
+          Bucket: !Ref DMSS3Bucket
+          DynamoTb: !Sub Controll-table-${pDBSourceSecretFolder}
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import datetime
+          import os
+
+          def lambda_handler(event, context):
+              # TODO implement
+              
+              dynamodb_client = boto3.client('dynamodb')
+              
+              s3 = boto3.client('s3')
+              
+              bucket_name = os.environ['Bucket']
+              bucket_out_name = os.environ['Bucket']
+              ruta = 'IN/'
+              ruta_out = 'OUT/'
+              
+              path_in = bucket_name + '|' + ruta
+              
+              path_out = bucket_out_name + '|' + ruta_out
+              
+              response = dynamodb_client.scan(
+                  TableName=os.environ['DynamoTb']
+              )
+              Nombre = ''
+              Fecha = ''
+              items = {}
+              archivos_procesados = []
+              fileadd=''
+              print(response['Items'])
+              for item in response['Items']:
+                  ##pasa el diccionario completo
+                  for clave, valor in item.items():
+                      #pasa el diccionario de la variable {S : valor
+                      if clave == 'file_name' or clave == 'update_date':
+                          for clave2,valor2 in valor.items():
+                              if clave == 'file_name':
+                                  Nombre = valor2
+                              if clave == 'update_date':
+                                  Fecha = valor2       
+                          print(valor2)
+                          fileadd = '{}/{}'.format(Nombre, Fecha)
+                  archivos_procesados.append(fileadd)
+              print(archivos_procesados)
+              response = s3.list_objects_v2(Bucket=bucket_name, Prefix=ruta)
+              #dafault large
+              instance = 'Default'
+              print(response['Contents'])
+              datos = []
+              for file in response['Contents']:
+                  
+                  x = "{}|{}|{}|{}".format(file['Key'].split('/')[3],file['LastModified'].date(),file['Key'].split('/')[2],file['Key'].split('/')[1])
+                  print(x)
+                  fecha_archivo = file['LastModified'].strftime("%Y-%m-%d")
+                  fecha_archivo = datetime.datetime.strptime(fecha_archivo, "%Y-%m-%d")
+                  fecha_archivo = fecha_archivo.date()
+                  fecha_actual = datetime.datetime.now().date()
+                  #print('arch: {} *-* Act: {}'.format(type(fecha_archivo),type(fecha_actual)))
+                  #if fecha_actual == fecha_archivo:
+                  
+                  file_name = '{}.csv/{}'.format(file['Key'].split('/')[2],file['LastModified'].date())
+                  print(file_name)
+                  if file_name not in archivos_procesados:
+                      datos.append(x)
+                  if file['Size'] <= 1000000 and instance == 'Default': ## change size to project need
+                      instance = 'm4.large' ## change insatnce to project need
+                  if file['Size'] >= 1000000 and instance == 'Default': ## change size to project need
+                      instance = 'm4.large' ## change instance to project need 
+                  
+              sdato = ''
+              
+              for dato in datos:
+                  sdato = sdato + dato + ','
+              
+              sdato = sdato[0:len(sdato)-1]
+              
+              print(sdato)
+              
+              data = False 
+              
+              if not datos:
+                  data = False
+              else:
+                  data = True
+              
+              return {
+                  "step": [
+                      "spark-submit", 
+                      "s3://"+os.environ['Bucket']+"/Emr_cluster/Python/main.py",
+                      "--files", 
+                      sdato,
+                      "--path_in", 
+                      path_in,
+                      "--path_out", 
+                      path_out,
+                      "--DynamoTb", 
+                      os.environ['DynamoTb']
+                  ],
+                  "Instance":instance,
+                  "Data": data
+              }
+      Handler: index.lambda_handler
+      Role: 
+        Fn::GetAtt: [lambdaExcRole, Arn]
+      Runtime: python3.9
+
+  ExcFunctionRule:
+    Type: AWS::Events::Rule
+    DependsOn: lambdaFunctionExcStepF
+    Properties:
+      Name: ExecDmsRule
+      ScheduleExpression: rate(30 minutes)
+      State: ENABLED
+      Targets:
+        - Arn: 
+            Fn::GetAtt: [ lambdaFunctionExcStepF, Arn]
+          Id: LambdaExctarget
+  
+  PermissionForEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        !Ref lambdaFunctionExcStepF
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          [ ExcFunctionRule, Arn]
+Outputs:
+  EndPointSourceDMS:
+    Value: !Sub ${DMSSource} 
+    Export: 
+      Name: pEndPointSourceDMS
+  EndPointTargetDMS:
+    Value: !Sub ${DMSTarget}
+    Export: 
+      Name: pEndPointTargetDMS
+  ReplicationInstanceDMS:
+    Value: !Sub ${DmsReplicationInstance} 
+    Export: 
+      Name: pReplicationInstanceDMS
