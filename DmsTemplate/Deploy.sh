@@ -1,6 +1,7 @@
 #!/bin/bash
+current_branch=$(git branch --show-current)
 
-stack_name="STK--Dms"
+stack_name="STK-$current_branch-Dms"
 
 account_id=$(aws sts get-caller-identity --query "Account" --output text)
 
