@@ -28,18 +28,45 @@ Parameters:
     Description: folder where the secrets of DB
     Type: String
     AllowedPattern: "[a-z0-9A-Z]{2,10}"
-  pDMSSchemaFilter:
-    Description: Schema to Stract Data
+  #pDMSSchemaFilter:
+    #Description: Schema to Stract Data
+    #Type: String
+    #AllowedPattern: ^[a-zA-Z0-9-_%]*$
+    #Default: "%"
+  #pDMSTableFilter:
+    #Description: tables to Stract Data
+    #Type: String
+    #Default: "%"
+    #AllowedPattern: ^[a-zA-Z0-9-_%]*$
+  pEnviroment:
+    Description: Enviroment 
+    Type: String
+    Default: "Dev"
+    AllowedPattern: ^[a-zA-Z0-9-_%]*$
+  pEquipement:
+    Description: Equip, team or proyect work
+    Type: String
+    Default: "Sophos"
+    AllowedPattern: ^[a-zA-Z0-9-_%]*$
+  pUseExcelTransformBucket:
+    Description: Create or not new Bucket
+    Type: String
+    Default: "No"
+    AllowedPattern: ^[a-zA-Z0-9-_%]*$
+  pVpcName:
+    Description: Create or not new Bucket
     Type: String
     AllowedPattern: ^[a-zA-Z0-9-_%]*$
-    Default: "%"
-  pDMSTableFilter:
-    Description: tables to Stract Data
+  pScheduleDMSExtract:
+    Description: Time the extraction is executed
     Type: String
-    Default: "%"
+    Default: "rate(30 minutes)"
     AllowedPattern: ^[a-zA-Z0-9-_%]*$
-
-
+  pReplicationInstanceSize:
+    Description: Replication instance to use in the extract
+    Type: String
+    Default: "dms.t3.micro"
+    AllowedPattern: ^[a-zA-Z0-9-_%]*$
 
 Conditions:
   IsDatabase:
@@ -334,7 +361,8 @@ Resources:
   MainEmrFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub my-main-${pDBSourceSecretFolder}
+      #cambio
+      FunctionName: !Sub my-main-${pEnviroment}-${pEquipement}-${pDBSourceSecretFolder}
       Role: 
         Fn::GetAtt: [lambdaExcRole, Arn]
       Runtime: python3.9
@@ -342,7 +370,8 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          Bucket: !Sub bucket-dms--${AWS::AccountId}-${pDBSourceEngine}
+          Bucket: !Sub bucket-dms--${pEnviroment}-${pEquipement}-${AWS::AccountId}-${pDBSourceEngine}
+          #cambio
       Code:
         ZipFile: |
           import boto3
@@ -401,7 +430,8 @@ Resources:
   BootstrapFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub my-bt-${pDBSourceSecretFolder}
+      #cambio
+      FunctionName: !Sub my-bt-${pEnviroment}-${pEquipement}-${pDBSourceSecretFolder}
       Role: 
         Fn::GetAtt: [lambdaExcRole, Arn]
       Runtime: python3.9
@@ -409,7 +439,8 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          Bucket: !Sub bucket-dms--${AWS::AccountId}-${pDBSourceEngine}
+          Bucket: !Sub bucket-dms--${pEnviroment}-${pEquipement}-${AWS::AccountId}-${pDBSourceEngine}
+          #cambio
       Code:
         ZipFile: |
           import boto3
@@ -570,13 +601,14 @@ Resources:
   lambdaFunctionExcStepF:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub ${pDBSourceSecretFolder}-dms-exc-stepf
+      FunctionName: !Sub ${pDBSourceSecretFolder}-${pEnviroment}-${pEquipement}-dms-exc-stepf
       Description: Initiates the step function to transform data
       Timeout: 600
       Environment:
         Variables:
           StepFunction: !Ref DMSStepMachine
-          Bucket: !Sub bucket-dms--${AWS::AccountId}-${pDBSourceEngine}
+          Bucket: !Sub bucket-dms--${pEnviroment}-${pEquipement}-${AWS::AccountId}-${pDBSourceEngine}
+          #cambio
           lPrefix: !Ref pDBSourceSecretFolder
       Code:
         ZipFile: |
@@ -660,33 +692,17 @@ Resources:
         Fn::GetAtt: [lambdaExcRole, Arn]
       Runtime: python3.9
 
-  #MyLambdaPermission:
-    #Type: AWS::Lambda::Permission
-    #DependsOn: lambdaFunctionExcStepF
-    #Properties:
-      #FunctionName: !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${pDBSourceSecretFolder}-dms-exc-stepf
-      #Action: lambda:InvokeFunction
-      #Principal: s3.amazonaws.com
-      #SourceAccount: !Ref AWS::AccountId
-
   DMSS3Bucket:
     Type: AWS::S3::Bucket
-    #DependsOn: MyLambdaPermission
     Properties:
-      BucketName: !Sub bucket-dms--${AWS::AccountId}-${pDBSourceEngine}
-      #NotificationConfiguration:
-        #LambdaConfigurations:
-          #- Event: s3:ObjectCreated:*
-            #Function: !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${pDBSourceSecretFolder}-dms-exc-stepf
-            #Filter:
-              #S3Key:
-                #Rules:
-                  #- Name: prefix
-                    #Value: IN/
+      BucketName: !Sub bucket-dms--${pEnviroment}-${pEquipement}-${AWS::AccountId}-${pDBSourceEngine}
+      #cambio
+
   MyDynamoDBTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub Controll-table-${pDBSourceSecretFolder}
+      TableName: !Sub Controll-table-${pDBSourceSecretFolder}-${pEnviroment}-${pEquipement}
+      #cambio
       AttributeDefinitions:
         - 
           AttributeName: file_name
@@ -710,11 +726,14 @@ Resources:
         EndpointType: source
         EngineName:
             Ref: pDBSourceEngine
-        ServerName: !Sub "{{resolve:secretsmanager:/SDLF/RDS/${pDBSourceSecretFolder}:SecretString:server}}"
+        ServerName: !Sub "{{resolve:secretsmanager:/${pEquipement}/${pEnviroment}/DMS/${pDBSourceSecretFolder}:SecretString:server}}"
+        #cambio
         Port:
             Ref: pDBSourcePort
-        Username: !Sub "{{resolve:secretsmanager:/SDLF/RDS/${pDBSourceSecretFolder}:SecretString:username}}"
-        Password: !Sub "{{resolve:secretsmanager:/SDLF/RDS/${pDBSourceSecretFolder}:SecretString:password}}"
+        Username: !Sub "{{resolve:secretsmanager:/${pEquipement}/${pEnviroment}/DMS/${pDBSourceSecretFolder}:SecretString:username}}"
+        #cambio
+        Password: !Sub "{{resolve:secretsmanager:/${pEquipement}/${pEnviroment}/DMS/${pDBSourceSecretFolder}:SecretString:password}}"
+        #cambio
 
   DMSTarget:
     Type: AWS::DMS::Endpoint
@@ -734,22 +753,22 @@ Resources:
       AllocatedStorage: 50
       EngineVersion: "3.4.7"
 
-  DMSReplicationTask:
-    Type: AWS::DMS::ReplicationTask
-    Properties:
-      MigrationType: full-load
-      ReplicationInstanceArn: !Sub ${DmsReplicationInstance} 
-      SourceEndpointArn: !Sub ${DMSSource} 
-      TableMappings:
-        Fn::Sub:
-          - '{"rules": [{"rule-type": "selection", "rule-id": "1", "rule-action": "include", "object-locator": {"schema-name": "${schema}", "table-name": "${tables}"}, "rule-name": "1"}]}'
-          - { schema: !Ref pDMSSchemaFilter, tables: !Ref pDMSTableFilter }
-      TargetEndpointArn: !Sub ${DMSTarget}  
+  #DMSReplicationTask:
+    #Type: AWS::DMS::ReplicationTask
+    #Properties:
+      #MigrationType: full-load
+      #ReplicationInstanceArn: !Sub ${DmsReplicationInstance} 
+      #SourceEndpointArn: !Sub ${DMSSource} 
+      #TableMappings:
+        #Fn::Sub:
+          #- '{"rules": [{"rule-type": "selection", "rule-id": "1", "rule-action": "include", "object-locator": {"schema-name": "${schema}", "table-name": "${tables}"}, "rule-name": "1"}]}'
+          #- { schema: !Ref pDMSSchemaFilter, tables: !Ref pDMSTableFilter }
+      #TargetEndpointArn: !Sub ${DMSTarget}  
 
   lambdaFunctionGetItems:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub ${pDBSourceSecretFolder}-dms-get-items
+      FunctionName: !Sub ${pEnviroment}-${pEquipement}-${pDBSourceSecretFolder}-dms-get-items
       Description: Initiates the step function to transform data
       Timeout: 600
       Environment:
@@ -869,7 +888,8 @@ Resources:
     DependsOn: lambdaFunctionExcStepF
     Properties:
       Name: ExecDmsRule
-      ScheduleExpression: rate(30 minutes)
+      ScheduleExpression: !Ref pScheduleDMSExtract
+      #schedule necesario
       State: ENABLED
       Targets:
         - Arn: 
@@ -888,14 +908,14 @@ Resources:
           [ ExcFunctionRule, Arn]
 Outputs:
   EndPointSourceDMS:
-    Value: !Sub ${DMSSource} 
+    Value: !Sub ${DMSSource}
     Export: 
-      Name: pEndPointSourceDMS
+      Name: !Sub pEndPointSourceDMS-${pEnviroment}-${pEquipement}
   EndPointTargetDMS:
     Value: !Sub ${DMSTarget}
     Export: 
-      Name: pEndPointTargetDMS
+      Name: !Sub pEndPointTargetDMS-${pEnviroment}-${pEquipement}
   ReplicationInstanceDMS:
-    Value: !Sub ${DmsReplicationInstance} 
+    Value: !Sub ${DmsReplicationInstance}
     Export: 
-      Name: pReplicationInstanceDMS
+      Name: !Sub pReplicationInstanceDMS-${pEnviroment}-${pEquipement}
