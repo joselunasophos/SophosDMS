@@ -721,6 +721,7 @@ Resources:
             - Ref: pDBSourceName
             - Ref: AWS::NoValue
         EndpointType: source
+        OracleSettings: '{ "UseBFile": true, "UseLogminerReader": false}'
         EngineName:
             Ref: pDBSourceEngine
         ServerName: !Sub "{{resolve:secretsmanager:/${pEquipement}/${pEnviroment}/DMS/${pDBSourceSecretFolder}:SecretString:server}}"
