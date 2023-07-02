@@ -7,7 +7,7 @@ Parameters:
     Default: mysql
 
 Resources:
-  DmsExcelRoleTest:
+  DmsExcelRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -48,7 +48,7 @@ Resources:
     Properties:
       FunctionName: !Sub get-params-data-${AWS::AccountId}
       Role: 
-        Fn::GetAtt: [DmsExcelRoleTest, Arn]
+        Fn::GetAtt: [DmsExcelRole, Arn]
       Runtime: python3.9
       Handler: index.lambda_handler
       Layers:
