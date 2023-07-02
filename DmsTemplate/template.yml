@@ -752,6 +752,8 @@ Resources:
       ReplicationInstanceClass: dms.t3.micro
       AllocatedStorage: 50
       EngineVersion: "3.4.7"
+      MultiAZ: "false"
+
 
   #DMSReplicationTask:
     #Type: AWS::DMS::ReplicationTask
