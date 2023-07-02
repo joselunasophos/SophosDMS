@@ -1,16 +1,9 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: Templete using to create new task on DMS infraestructure
 Parameters:
-  pDMSSchemaFilter:
+  pDataTask:
     Description: Schema to Stract Data
     Type: String
-    AllowedPattern: ^[a-zA-Z0-9-_%]*$
-    Default: "%"
-  pDMSTableFilter:
-    Description: tables to Stract Data
-    Type: String
-    Default: "%"
-    AllowedPattern: ^[a-zA-Z0-9-_%]*$
 
 Resources:
 
@@ -20,14 +13,11 @@ Resources:
       MigrationType: full-load
       ReplicationInstanceArn:
         Fn::ImportValue: 
-          pReplicationInstanceDMS
+          pReplicationInstanceDMS-dev-sophos
       SourceEndpointArn: 
         Fn::ImportValue: 
-          pEndPointSourceDMS
-      TableMappings:
-        Fn::Sub:
-          - '{"rules": [{"rule-type": "selection", "rule-id": "1", "rule-action": "include", "object-locator": {"schema-name": "${schema}", "table-name": "${tables}"}, "rule-name": "1"}]}'
-          - { schema: !Ref pDMSSchemaFilter, tables: !Ref pDMSTableFilter }
+          pEndPointSourceDMS-dev-sophos
+      TableMappings: !Ref pDataTask
       TargetEndpointArn:
         Fn::ImportValue:
-          pEndPointTargetDMS
+          pEndPointTargetDMS-dev-sophos
