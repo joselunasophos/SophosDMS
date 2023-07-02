@@ -60,12 +60,10 @@ Parameters:
     Description: Time the extraction is executed
     Type: String
     Default: "rate(30 minutes)"
-    AllowedPattern: ^[a-zA-Z0-9-_%]*$
   pReplicationInstanceSize:
     Description: Replication instance to use in the extract
     Type: String
     Default: "dms.t3.micro"
-    AllowedPattern: ^[a-zA-Z0-9-_%]*$
 
 Conditions:
   IsDatabase:
