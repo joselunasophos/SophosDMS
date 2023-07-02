@@ -105,8 +105,8 @@ Resources:
 
                   file_name_json = 'cf_file_out/params.json'
                   s3.put_object(Body=json_data, Bucket=bucket_name, Key=file_name_json)
-              except:
-                  return "file no found"
+              except Exception as e:
+                  return e
 
           def dms_task_file():#this file is the principal file of Dms
               file_name = 'cf_file_in/DmsTaskParams.xlsx'
@@ -147,8 +147,8 @@ Resources:
 
                   file_name_json = 'cf_file_out/taskparams.json'
                   s3.put_object(Body=json_data, Bucket=bucket_name, Key=file_name_json)
-              except:
-                  return "file no found"
+              except Exception as e:
+                  return e
 
           def lambda_handler(event, context):
 
