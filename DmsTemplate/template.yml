@@ -53,10 +53,9 @@ Parameters:
     Type: String
     Default: "No"
     AllowedPattern: ^[a-zA-Z0-9-_%]*$
-  pVpcName:
+  pSubnetGroupName:
     Description: Create or not new Bucket
     Type: String
-    AllowedPattern: ^[a-zA-Z0-9-_%]*$
   pScheduleDMSExtract:
     Description: Time the extraction is executed
     Type: String
@@ -753,6 +752,7 @@ Resources:
       AllocatedStorage: 50
       EngineVersion: "3.4.7"
       MultiAZ: "false"
+      ReplicationSubnetGroupIdentifier: !Ref pSubnetGroupName
 
 
   #DMSReplicationTask:
