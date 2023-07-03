@@ -607,6 +607,8 @@ Resources:
           Bucket: !Sub bucket-dms--${pEnviroment}-${pEquipement}-${AWS::AccountId}-${pDBSourceEngine}
           #cambio
           lPrefix: !Ref pDBSourceSecretFolder
+          Team: !Ref pEquipement
+          Enviroment: !Ref pEnviroment
       Code:
         ZipFile: |
           import json
@@ -627,7 +629,9 @@ Resources:
           def invoke_lambda_main():
               client = boto3.client('lambda')
               Prefix = os.environ['lPrefix']
-              lambda_name = 'my-main-'+Prefix
+              Team = os.environ['Team']
+              Enviroment = os.environ['Enviroment']
+              lambda_name = 'my-main-'+Enviroment+'-'+Team+'-'+Prefix
               payload = '{"key": "value"}' 
               response = client.invoke(
                   FunctionName=lambda_name,
@@ -639,7 +643,9 @@ Resources:
           def invoke_lambda_bootstrap():
               client = boto3.client('lambda')
               Prefix = os.environ['lPrefix']
-              lambda_name = 'my-bt-'+Prefix
+              Team = os.environ['Team']
+              Enviroment = os.environ['Enviroment']
+              lambda_name = 'my-bt-'+Enviroment+'-'+Team+'-'+Prefix
               payload = '{"key": "value"}' 
               response = client.invoke(
                   FunctionName=lambda_name,
