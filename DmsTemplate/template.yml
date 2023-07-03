@@ -64,7 +64,11 @@ Parameters:
     Description: Replication instance to use in the extract
     Type: String
     Default: "dms.t3.micro"
-
+  pPathBucketOut:
+    Description: output bucket where the files end up
+    Type: String
+    AllowedPattern: ^[a-z0-9-_%]*$
+    
 Conditions:
   IsDatabase:
     Fn::Or:
@@ -366,8 +370,12 @@ Resources:
       Handler: index.lambda_handler
       Timeout: 300
       Environment:
-        Variables:
-          Bucket: !Sub bucket-dms--${pEnviroment}-${pEquipement}-${AWS::AccountId}-${pDBSourceEngine}
+        Fn::If:
+          - UseDefaultBucket
+          - Variables:
+            Bucket: !Sub bucket-dms--${pEnviroment}-${pEquipement}-${AWS::AccountId}-${pDBSourceEngine}
+          - Variables:
+            Bucket: !Ref pPathBucketOut
           #cambio
       Code:
         ZipFile: |
