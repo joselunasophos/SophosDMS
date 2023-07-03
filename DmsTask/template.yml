@@ -3,7 +3,7 @@ Description: Templete using to create new task on DMS infraestructure
 Parameters:
   pDataTask:
     Description: Schema to Stract Data
-    Type: String
+    Type: Json
 
 Resources:
 
@@ -17,7 +17,7 @@ Resources:
       SourceEndpointArn: 
         Fn::ImportValue: 
           pEndPointSourceDMS-dev-sophos
-      TableMappings: !Ref pDataTask
+      TableMappings: !Sub '${pDataTask}'
       TargetEndpointArn:
         Fn::ImportValue:
           pEndPointTargetDMS-dev-sophos
