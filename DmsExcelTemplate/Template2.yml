@@ -105,7 +105,7 @@ Resources:
               except Exception as e:
                   return e
 
-              def dms_task_file():#this file is the principal file of Dms
+            def dms_task_file():#this file is the principal file of Dms
               file_name = 'cf_file_in/DmsTaskParams.xlsx'
               bucket_name = os.environ['Bucket']
           
@@ -119,13 +119,19 @@ Resources:
                   workbook = openpyxl.load_workbook(excel_stream)
           
                   sheets = workbook.sheetnames
-                  
+                  param = []
+                  dict_param = {}
                   dict_result = {}
                   rules = []
                   ejecution_id = 1
                   sheet = workbook['Data']
                   for row in sheet.iter_rows(values_only=True):
                       rule = {}
+                      if ejecution_id == 2:
+                          print("hola mundo")
+                          dict_param["ParameterKey"] = "pNameTask"
+                          dict_param["ParameterValue"] = row[4]
+                          param.append(dict_param)
                       if row[0] != 'SchemaToExtract' and row[0] is not None:
                           object_r = {}
                           object_r["schema-name"] = str(row[0])
@@ -144,7 +150,6 @@ Resources:
                   
                   dict_result["rules"]=rules
                   
-                  param = []
                   dict_param = {}
                   dict_param["ParameterKey"] = "pDataTask"
                   dict_result = str(dict_result)
@@ -154,7 +159,6 @@ Resources:
                   
                   
                   param.append(dict_param)
-                  print(param)
                   json_data = json.dumps(param)
                   workbook.close()
           
