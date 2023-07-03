@@ -28,16 +28,6 @@ Parameters:
     Description: folder where the secrets of DB
     Type: String
     AllowedPattern: "[a-z0-9A-Z]{2,10}"
-  #pDMSSchemaFilter:
-    #Description: Schema to Stract Data
-    #Type: String
-    #AllowedPattern: ^[a-zA-Z0-9-_%]*$
-    #Default: "%"
-  #pDMSTableFilter:
-    #Description: tables to Stract Data
-    #Type: String
-    #Default: "%"
-    #AllowedPattern: ^[a-zA-Z0-9-_%]*$
   pEnviroment:
     Description: Enviroment 
     Type: String
@@ -67,7 +57,6 @@ Parameters:
   pPathBucketOut:
     Description: output bucket where the files end up
     Type: String
-    AllowedPattern: ^[a-z0-9-_%]*$
     
 Conditions:
   IsDatabase:
