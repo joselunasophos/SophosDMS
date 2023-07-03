@@ -128,7 +128,6 @@ Resources:
                   for row in sheet.iter_rows(values_only=True):
                       rule = {}
                       if ejecution_id == 2:
-                          print("hola mundo")
                           dict_param["ParameterKey"] = "pNameTask"
                           dict_param["ParameterValue"] = row[4]
                           param.append(dict_param)
