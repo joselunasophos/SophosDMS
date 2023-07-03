@@ -79,6 +79,7 @@ Conditions:
       - Fn::Equals:
           - Ref: pDBSourceEngine
           - sybase
+  UseDefaultBucket: !Equals [!Ref pPathBucketOut, null]
 
 Resources:
   DmsRole:
