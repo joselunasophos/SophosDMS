@@ -1,6 +1,5 @@
 #!/bin/bash
 current_branch=$(git branch --show-current) 
-stack_name="Dms-$current_branch-Task"
 
 account_id=$(aws sts get-caller-identity --query "Account" --output text)
 
@@ -11,6 +10,10 @@ aws s3 cp "$bucket" .
 SCRIPT_DIR=$(dirname "$0")
 template_file="$SCRIPT_DIR/template.yml"
 parameters="$SCRIPT_DIR/taskparams.json"
+
+Stack_Name=$(jq -r '.[] | select(.ParameterKey=="pNameTask") | .ParameterValue' "$SCRIPT_DIR/taskparams.json" )
+
+stack_name="Dms-$current_branch-Task-$Stack_Name"
 
 region=$(aws configure get region)
 
