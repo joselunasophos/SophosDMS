@@ -87,7 +87,6 @@ Resources:
                       if j == 0:
                           sheet = workbook['Data']
                           for row in sheet.iter_rows(values_only=True):
-                              print(row)
                               dict = {}
                               if i > 0:
                                    if row[0] is not None:
@@ -97,8 +96,6 @@ Resources:
                               i = i + 1 
                           j = j + 1
 
-
-                  print(param)
                   workbook.close()
 
                   json_data = json.dumps(param)
@@ -108,43 +105,59 @@ Resources:
               except Exception as e:
                   return e
 
-          def dms_task_file():#this file is the principal file of Dms
+              def dms_task_file():#this file is the principal file of Dms
               file_name = 'cf_file_in/DmsTaskParams.xlsx'
               bucket_name = os.environ['Bucket']
-
+          
               s3 = boto3.client('s3')
               try:
                   response = s3.get_object(Bucket=bucket_name, Key=file_name)
                   excel_data = response['Body'].read()
-
+          
                   excel_stream = BytesIO(excel_data)
-
+          
                   workbook = openpyxl.load_workbook(excel_stream)
-
+          
                   sheets = workbook.sheetnames
-                  i = 0
-                  j = 0
+                  
+                  dict_result = {}
+                  rules = []
+                  ejecution_id = 1
+                  sheet = workbook['Data']
+                  for row in sheet.iter_rows(values_only=True):
+                      rule = {}
+                      if row[0] != 'SchemaToExtract' and row[0] is not None:
+                          object_r = {}
+                          object_r["schema-name"] = str(row[0])
+                          object_r["table-name"] = str(row[1])
+                          rule["rule-type"] ="selection"
+                          rule["rule-id"] = str(ejecution_id)
+                          rule["rule-name"] = str(ejecution_id)
+                          rule["object-locator"] = object_r
+                          rule["rule-action"]=str(row[3])
+                          if row[2] is not None: 
+                              rule["filters"]=str(row[2])
+                          else:
+                              rule["filters"]=[]
+                          rules.append(rule)
+                      ejecution_id = ejecution_id + 1
+                  
+                  dict_result["rules"]=rules
+                  
                   param = []
-                  for sheet_name in sheets:
-                      if j == 0:
-                          sheet = workbook['Data']
-                          for row in sheet.iter_rows(values_only=True):
-                              print(row)
-                              dict = {}
-                              if i > 0:
-                                  if row[0] is not None:
-                                      dict["ParameterKey"] = str(row[0])
-                                      dict["ParameterValue"] = str(row[1])
-                                      param.append(dict)
-                              i = i + 1 
-                          j = j + 1
-
-
+                  dict_param = {}
+                  dict_param["ParameterKey"] = "pDataTask"
+                  dict_result = str(dict_result)
+                  dict_result = dict_result.replace("'", '"')
+                  dict_result = dict_result.replace("\\", "")
+                  dict_param["ParameterValue"] = dict_result
+                  
+                  
+                  param.append(dict_param)
                   print(param)
-                  workbook.close()
-
                   json_data = json.dumps(param)
-
+                  workbook.close()
+          
                   file_name_json = 'cf_file_out/taskparams.json'
                   s3.put_object(Body=json_data, Bucket=bucket_name, Key=file_name_json)
               except Exception as e:
