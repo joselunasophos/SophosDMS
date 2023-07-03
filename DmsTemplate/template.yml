@@ -473,7 +473,7 @@ Resources:
                 "Resource": "arn:aws:states:::lambda:invoke",
                 "Parameters": {
                   "Payload.$": "$",
-                  "FunctionName": "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${pDBSourceSecretFolder}-dms-get-items:$LATEST"
+                  "FunctionName": "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${pEnviroment}-${pEquipement}-${pDBSourceSecretFolder}-dms-get-items:$LATEST"
                 },
                 "Retry": [
                   {
@@ -538,12 +538,12 @@ Resources:
                       "Name": "Spark"
                     }
                   ],
-                  "LogUri": "s3://bucket-dms--${AWS::AccountId}-${pDBSourceEngine}/Emr_cluster/Logs/",
+                  "LogUri": "s3://bucket-dms--${pEnviroment}-${pEquipement}-${AWS::AccountId}-${pDBSourceEngine}/Emr_cluster/Logs/",
                   "BootstrapActions": [
                     {
                       "Name": "CustomBootStrapAction",
                       "ScriptBootstrapAction": {
-                        "Path": "s3://bucket-dms--${AWS::AccountId}-${pDBSourceEngine}/Emr_cluster/Bootstrap/bootstrap.sh"
+                        "Path": "s3://bucket-dms--${pEnviroment}-${pEquipement}-${AWS::AccountId}-${pDBSourceEngine}/Emr_cluster/Bootstrap/bootstrap.sh"
                       }
                     }
                   ],
