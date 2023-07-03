@@ -2,8 +2,8 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: Templete using to create new task on DMS infraestructure
 Parameters:
   pDataTask:
-    Description: Schema to Stract Data
-    Type: Json
+    Description: Rules to create tast to extract data
+    Type: String
 
 Resources:
 
@@ -17,7 +17,7 @@ Resources:
       SourceEndpointArn: 
         Fn::ImportValue: 
           pEndPointSourceDMS-dev-sophos
-      TableMappings: !Sub '${pDataTask}'
+      TableMappings: !Ref pDataTask
       TargetEndpointArn:
         Fn::ImportValue:
           pEndPointTargetDMS-dev-sophos
