@@ -780,7 +780,7 @@ Resources:
       Environment:
         Variables:
           Bucket: !Ref DMSS3Bucket
-          DynamoTb: !Sub Controll-table-${pDBSourceSecretFolder}
+          DynamoTb: !Sub Controll-table-${pDBSourceSecretFolder}-${pEnviroment}-${pEquipement}
       Code:
         ZipFile: |
           import json
