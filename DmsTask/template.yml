@@ -4,6 +4,11 @@ Parameters:
   pDataTask:
     Description: Rules to create tast to extract data
     Type: String
+  pNameTask:
+    Description: Name to do unique some Stack
+    Type: String
+    AllowedPattern: "[a-z0-9A-Z]{2,10}"
+    Default: "Task1"
 
 Resources:
 
