@@ -10,7 +10,7 @@ aws s3 cp "$bucket" .
 SCRIPT_DIR=$(dirname "$0")
 template_file="$SCRIPT_DIR/template.yml"
 
-pDBSourceName=$(jq -r '.[] | select(.ParameterKey=="pDBSourceName") | .ParameterValue' "$SCRIPT_DIR/params.json")
+pDBSourceEngine=$(jq -r '.[] | select(.ParameterKey=="pDBSourceEngine") | .ParameterValue' "$SCRIPT_DIR/params.json")
 
 stack_name="STK-$current_branch-Dms-$pDBSourceName"
 
