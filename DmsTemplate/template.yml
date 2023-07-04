@@ -363,6 +363,7 @@ Resources:
       Environment:
         Variables:
           Bucket: !If
+            - UseDefaultBucket
             - !Sub bucket-dms--${pEnviroment}-${pEquipement}-${AWS::AccountId}-${pDBSourceEngine}
             - !Ref pPathBucketOut
           #cambio
