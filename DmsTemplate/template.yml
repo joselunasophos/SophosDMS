@@ -783,7 +783,7 @@ Resources:
       Environment:
         Variables:
           Bucket: !Ref DMSS3Bucket
-          Bucket_out:
+          Bucket_out: !If
             - UseDefaultBucket
             - !Sub bucket-dms--${pEnviroment}-${pEquipement}-${AWS::AccountId}-${pDBSourceEngine}
             - !Ref pPathBucketOut
