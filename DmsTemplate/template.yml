@@ -58,6 +58,10 @@ Parameters:
     Description: output bucket where the files end up
     Type: String
     Default: "Default"
+  pBucketFolderOut:
+    Description: output folder where the files end up
+    Type: String
+    Default: "OUT/"
     
 Conditions:
   IsDatabase:
@@ -782,6 +786,7 @@ Resources:
         Variables:
           Bucket: !Ref DMSS3Bucket
           DynamoTb: !Sub Controll-table-${pDBSourceSecretFolder}-${pEnviroment}-${pEquipement}
+          Path_out: !Ref pBucketFolderOut
       Code:
         ZipFile: |
           import json
@@ -799,7 +804,8 @@ Resources:
               bucket_name = os.environ['Bucket']
               bucket_out_name = os.environ['Bucket']
               ruta = 'IN/'
-              ruta_out = 'OUT/'
+              ruta_out = os.environ['Path_out']
+              #ruta_out = 'OUT/'
               
               path_in = bucket_name + '|' + ruta
               
