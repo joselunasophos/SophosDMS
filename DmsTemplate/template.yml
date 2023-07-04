@@ -367,10 +367,7 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          Bucket: !If
-            - UseDefaultBucket
-            - !Sub bucket-dms--${pEnviroment}-${pEquipement}-${AWS::AccountId}-${pDBSourceEngine}
-            - !Ref pPathBucketOut
+          Bucket: !Sub bucket-dms--${pEnviroment}-${pEquipement}-${AWS::AccountId}-${pDBSourceEngine}
           #cambio
       Code:
         ZipFile: |
@@ -786,6 +783,10 @@ Resources:
       Environment:
         Variables:
           Bucket: !Ref DMSS3Bucket
+          Bucket_out:
+            - UseDefaultBucket
+            - !Sub bucket-dms--${pEnviroment}-${pEquipement}-${AWS::AccountId}-${pDBSourceEngine}
+            - !Ref pPathBucketOut
           DynamoTb: !Sub Controll-table-${pDBSourceSecretFolder}-${pEnviroment}-${pEquipement}
           Path_out: !If
             - UseDefaultFolder
@@ -806,10 +807,9 @@ Resources:
               s3 = boto3.client('s3')
               
               bucket_name = os.environ['Bucket']
-              bucket_out_name = os.environ['Bucket']
+              bucket_out_name = os.environ['Bucket_out']
               ruta = 'IN/'
               ruta_out = os.environ['Path_out']
-              #ruta_out = 'OUT/'
               
               path_in = bucket_name + '|' + ruta
               
