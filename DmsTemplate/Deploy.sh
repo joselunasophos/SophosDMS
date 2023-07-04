@@ -8,11 +8,12 @@ bucket="s3://bucket-dms-excel-$account_id/cf_file_out/params.json"
 aws s3 cp "$bucket" .
 
 SCRIPT_DIR=$(dirname "$0")
+
 template_file="$SCRIPT_DIR/template.yml"
 
 pDBSourceEngine=$(jq -r '.[] | select(.ParameterKey=="pDBSourceEngine") | .ParameterValue' "$SCRIPT_DIR/params.json")
 
-stack_name="STK-$current_branch-Dms-$pDBSourceName"
+stack_name="STK-$current_branch-Dms-$pDBSourceEngine"
 
 parameters="$SCRIPT_DIR/params.json"
 
